@@ -122,6 +122,7 @@ namespace EXILEDBattleRoyale
                 if (player != null)
                 {
                     RoundSummary.RoundLock = false;
+                    player.GetComponent<Broadcast>().RpcAddElement("<color=red>" + player.GetComponent<NicknameSync>().MyNick + " wins!</color>", 10, true);
                 }
             }
         }
