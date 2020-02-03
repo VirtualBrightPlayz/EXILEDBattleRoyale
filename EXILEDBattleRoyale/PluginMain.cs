@@ -22,6 +22,7 @@ namespace EXILEDBattleRoyale
             Events.CheckEscapeEvent -= PLEV.ThereIsNoEscape;
             Events.RoundStartEvent -= PLEV.CommitMassRedacted;
             Events.PlayerDeathEvent -= PLEV.MansNotAlive;
+            Events.TeamRespawnEvent -= PLEV.CloseTheBorder;
             PLEV = null;
         }
 
@@ -43,6 +44,7 @@ namespace EXILEDBattleRoyale
             Events.CheckEscapeEvent += PLEV.ThereIsNoEscape;
             Events.RoundStartEvent += PLEV.CommitMassRedacted;
             Events.PlayerDeathEvent += PLEV.MansNotAlive;
+            Events.TeamRespawnEvent += PLEV.CloseTheBorder;
         }
 
         public override void OnReload()
@@ -121,6 +123,14 @@ namespace EXILEDBattleRoyale
                 {
                     RoundSummary.RoundLock = false;
                 }
+            }
+        }
+
+        public void CloseTheBorder(ref TeamRespawnEvent ev)
+        {
+            foreach (var plr in ev.ToRespawn)
+            {
+                Timing.RunCoroutine(SpawnAsZeBORDER(plr.gameObject));
             }
         }
     }
