@@ -475,7 +475,7 @@ namespace EXILEDBattleRoyale
                     {
                         if (plr != null && plr.GetComponent<CharacterClassManager>().CurClass != RoleType.ClassD)
                         {
-                            plr.GetComponent<PlayerStats>().HurtPlayer(new PlayerStats.HitInfo(10000f, "Server", DamageTypes.Nuke, -1), null);
+                            plr.GetComponent<CharacterClassManager>().SetClassID(RoleType.Spectator);
                         }
                     }
                 }
