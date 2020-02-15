@@ -482,7 +482,7 @@ namespace EXILEDBattleRoyale
             }
             else
             {
-                ev.Player.GetComponent<Broadcast>().RpcAddElement("<color=orange>" + ev.Player.nicknameSync.MyNick + " died!\n" + (idx + 0) + " people left!</color>", 10, true);
+                ev.Player.GetComponent<Broadcast>().RpcAddElement("<color=orange>" + ev.Player.nicknameSync.MyNick + " died!\n" + (idx + 0) + " people left!</color>", 3, true);
             }
         }
 
