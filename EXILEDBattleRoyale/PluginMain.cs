@@ -455,11 +455,11 @@ namespace EXILEDBattleRoyale
 
         public void MansNotAlive(ref PlayerDeathEvent ev)
         {
-            int idx = -1;
+            int idx = 0;
             GameObject player = null;
             foreach (var plr in PlayerManager.players)
             {
-                if (plr != null && plr.GetComponent<CharacterClassManager>().CurClass == RoleType.ClassD)
+                if (plr != null && plr.GetComponent<CharacterClassManager>().CurClass == RoleType.ClassD && plr.GetComponent<ReferenceHub>() != ev.Player)
                 {
                     player = plr;
                     idx++;
