@@ -41,6 +41,7 @@ namespace EXILEDBattleRoyale
             Events.TeamRespawnEvent -= PLEV.CloseTheBorder;
             Events.DoorInteractEvent -= PLEV.AllowTheBorderTHROUGH;
             Events.PlayerJoinEvent -= PLEV.EnterTheMatchTheyMust;
+            Events.DecontaminationEvent -= PLEV.KILLTheLCZ;
             PLEV = null;
         }
 
@@ -115,6 +116,14 @@ namespace EXILEDBattleRoyale
             if (!File.Exists(Path.Combine(pluginDir, "config.yml")))
                 File.WriteAllText(Path.Combine(pluginDir, "config.yml"), "");
             ReloadConfig();
+            PLEV = new PluginEvents(this);
+            Events.CheckEscapeEvent += PLEV.ThereIsNoEscape;
+            Events.RoundStartEvent += PLEV.CommitMassRedacted;
+            Events.PlayerDeathEvent += PLEV.MansNotAlive;
+            Events.TeamRespawnEvent += PLEV.CloseTheBorder;
+            Events.DoorInteractEvent += PLEV.AllowTheBorderTHROUGH;
+            Events.PlayerJoinEvent += PLEV.EnterTheMatchTheyMust;
+            Events.DecontaminationEvent += PLEV.KILLTheLCZ;
         }
 
         public void ReloadConfig()
@@ -293,13 +302,6 @@ namespace EXILEDBattleRoyale
                 }*/
             }
             SetupTiersStart(data2);
-            PLEV = new PluginEvents(this);
-            Events.CheckEscapeEvent += PLEV.ThereIsNoEscape;
-            Events.RoundStartEvent += PLEV.CommitMassRedacted;
-            Events.PlayerDeathEvent += PLEV.MansNotAlive;
-            Events.TeamRespawnEvent += PLEV.CloseTheBorder;
-            Events.DoorInteractEvent += PLEV.AllowTheBorderTHROUGH;
-            Events.PlayerJoinEvent += PLEV.EnterTheMatchTheyMust;
         }
 
         public override void OnReload()
@@ -313,6 +315,7 @@ namespace EXILEDBattleRoyale
         public const float MinDist = 300;
         public Dictionary<Transform, string> rooms;
         public Dictionary<Transform, string> roomsstart;
+        public List<string> userids;
         private PluginMain PL;
 
         public PluginEvents(PluginMain pl)
@@ -329,6 +332,8 @@ namespace EXILEDBattleRoyale
 
         IEnumerator<float> SpawnAsDClass(GameObject plr)
         {
+            if (userids != null)
+                userids.Add(plr.GetComponent<CharacterClassManager>().UserId);
             yield return Timing.WaitForSeconds(0.5f);
             plr.GetComponent<CharacterClassManager>().SetClassID(RoleType.ClassD);
             plr.GetComponent<PlayerStats>().health = PluginMain.combatHP;
@@ -361,38 +366,10 @@ namespace EXILEDBattleRoyale
             plr.GetComponent<Inventory>().Clear();
         }
 
-        public void CommitMassRedacted()
+        public void CalcRooms()
         {
-            try
-            {
-                /*Log.Debug("Main.Rooms - " + (PluginMain.Rooms == null).ToString());
-                Log.Debug("Main.items - " + (PluginMain.items == null).ToString());*/
-                Log.Debug("this.rooms - " + (rooms == null).ToString());
-                Log.Debug("079IFace " + (Interface079.singleton.allInteractables == null).ToString());
-                Log.Debug("Players " + (PlayerManager.players == null).ToString());
-                Log.Debug("Inv " + (Pickup.Inv == null).ToString());
-            }
-            catch (NullReferenceException e)
-            {
-                Log.Error("Oh noes: " + e.ToString());
-            }
-
-            Log.Debug("null chk");
-            if (rooms == null)
-            {
-                rooms = new Dictionary<Transform, string>();
-            }
-            if (roomsstart == null)
-            {
-                roomsstart = new Dictionary<Transform, string>();
-            }
-
-            Log.Debug("Clear");
             rooms.Clear();
             roomsstart.Clear();
-            Log.Debug("RLock");
-            RoundSummary.RoundLock = true;
-
 
             foreach (var item in Interface079.singleton.allInteractables)
             {
@@ -424,6 +401,44 @@ namespace EXILEDBattleRoyale
                     }
                 }
             }
+        }
+
+        public void CommitMassRedacted()
+        {
+            try
+            {
+                /*Log.Debug("Main.Rooms - " + (PluginMain.Rooms == null).ToString());
+                Log.Debug("Main.items - " + (PluginMain.items == null).ToString());*/
+                Log.Debug("this.rooms - " + (rooms == null).ToString());
+                Log.Debug("079IFace " + (Interface079.singleton.allInteractables == null).ToString());
+                Log.Debug("Players " + (PlayerManager.players == null).ToString());
+                Log.Debug("Inv " + (Pickup.Inv == null).ToString());
+            }
+            catch (NullReferenceException e)
+            {
+                Log.Error("Oh noes: " + e.ToString());
+            }
+
+            Log.Debug("null chk");
+            if (rooms == null)
+            {
+                rooms = new Dictionary<Transform, string>();
+            }
+            if (roomsstart == null)
+            {
+                roomsstart = new Dictionary<Transform, string>();
+            }
+            if (userids == null)
+            {
+                userids = new List<string>();
+            }
+
+            Log.Debug("Clear");
+            Log.Debug("RLock");
+            RoundSummary.RoundLock = true;
+
+            CalcRooms();
+
             int idx = 0;
             foreach (var plr in PlayerManager.players)
             {
@@ -480,7 +495,7 @@ namespace EXILEDBattleRoyale
                     }
                 }
             }
-            else
+            else if (ev.Player.characterClassManager.CurClass == RoleType.ClassD)
             {
                 ev.Player.GetComponent<Broadcast>().RpcAddElement("<color=orange>" + ev.Player.nicknameSync.MyNick + " died!\n" + (idx + 0) + " people left!</color>", 3, true);
             }
@@ -505,8 +520,17 @@ namespace EXILEDBattleRoyale
 
         public void EnterTheMatchTheyMust(PlayerJoinEvent ev)
         {
+            if (userids == null || userids.Contains(ev.Player.characterClassManager.UserId))
+            {
+                return;
+            }
             Timing.RunCoroutine(SpawnAsDClass(ev.Player.gameObject));
             Timing.RunCoroutine(SpawnAtRNG(ev.Player.gameObject));
+        }
+
+        public void KILLTheLCZ(ref DecontaminationEvent ev)
+        {
+            ev.Allow = false;
         }
     }
 }
