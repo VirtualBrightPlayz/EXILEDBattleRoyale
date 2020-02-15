@@ -455,7 +455,7 @@ namespace EXILEDBattleRoyale
 
         public void MansNotAlive(ref PlayerDeathEvent ev)
         {
-            int idx = 0;
+            int idx = -1;
             GameObject player = null;
             foreach (var plr in PlayerManager.players)
             {
