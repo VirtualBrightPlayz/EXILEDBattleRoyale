@@ -35,14 +35,17 @@ namespace EXILEDBattleRoyale
 
         public override void OnDisable()
         {
-            Events.CheckEscapeEvent -= PLEV.ThereIsNoEscape;
-            Events.RoundStartEvent -= PLEV.CommitMassRedacted;
-            Events.PlayerDeathEvent -= PLEV.MansNotAlive;
-            Events.TeamRespawnEvent -= PLEV.CloseTheBorder;
-            Events.DoorInteractEvent -= PLEV.AllowTheBorderTHROUGH;
-            Events.PlayerJoinEvent -= PLEV.EnterTheMatchTheyMust;
-            Events.DecontaminationEvent -= PLEV.KILLTheLCZ;
-            PLEV = null;
+            if (PLEV != null)
+            {
+                Events.CheckEscapeEvent -= PLEV.ThereIsNoEscape;
+                Events.RoundStartEvent -= PLEV.CommitMassRedacted;
+                Events.PlayerDeathEvent -= PLEV.MansNotAlive;
+                Events.TeamRespawnEvent -= PLEV.CloseTheBorder;
+                Events.DoorInteractEvent -= PLEV.AllowTheBorderTHROUGH;
+                Events.PlayerJoinEvent -= PLEV.EnterTheMatchTheyMust;
+                Events.DecontaminationEvent -= PLEV.KILLTheLCZ;
+                PLEV = null;
+            }
         }
 
         public void SetupTiers(IDictionary<object, object> data2)
@@ -116,14 +119,18 @@ namespace EXILEDBattleRoyale
             if (!File.Exists(Path.Combine(pluginDir, "config.yml")))
                 File.WriteAllText(Path.Combine(pluginDir, "config.yml"), "");
             ReloadConfig();
-            PLEV = new PluginEvents(this);
-            Events.CheckEscapeEvent += PLEV.ThereIsNoEscape;
-            Events.RoundStartEvent += PLEV.CommitMassRedacted;
-            Events.PlayerDeathEvent += PLEV.MansNotAlive;
-            Events.TeamRespawnEvent += PLEV.CloseTheBorder;
-            Events.DoorInteractEvent += PLEV.AllowTheBorderTHROUGH;
-            Events.PlayerJoinEvent += PLEV.EnterTheMatchTheyMust;
-            Events.DecontaminationEvent += PLEV.KILLTheLCZ;
+            if (Config.GetBool("battle_enabled", false))
+            {
+                Log.Info("Battle Royale enabled.");
+                PLEV = new PluginEvents(this);
+                Events.CheckEscapeEvent += PLEV.ThereIsNoEscape;
+                Events.RoundStartEvent += PLEV.CommitMassRedacted;
+                Events.PlayerDeathEvent += PLEV.MansNotAlive;
+                Events.TeamRespawnEvent += PLEV.CloseTheBorder;
+                Events.DoorInteractEvent += PLEV.AllowTheBorderTHROUGH;
+                Events.PlayerJoinEvent += PLEV.EnterTheMatchTheyMust;
+                Events.DecontaminationEvent += PLEV.KILLTheLCZ;
+            }
         }
 
         public void ReloadConfig()
@@ -145,9 +152,9 @@ namespace EXILEDBattleRoyale
             Rooms = Config.GetStringList("battle_rooms");*/
             try
             {
-                Log.Debug(data2["battle_tiers"].GetType().ToString());
+                //Log.Debug(data2["battle_tiers"].GetType().ToString());
                 var item = (IList<object>)data2["battle_tiers"]; //Config.GetStringList("battle_tiers");
-                Log.Debug(item.Count.ToString());
+                //Log.Debug(item.Count.ToString());
                 Tiers = new List<string>();
                 foreach (var item2 in item)
                 {
@@ -323,11 +330,21 @@ namespace EXILEDBattleRoyale
             this.PL = pl;
             rooms = new Dictionary<Transform, string>();
             roomsstart = new Dictionary<Transform, string>();
+            // next update
+            //Timing.RunCoroutine(Update());
         }
 
         public void ThereIsNoEscape(ref CheckEscapeEvent ev)
         {
             ev.Allow = false;
+        }
+
+        IEnumerator<float> Update()
+        {
+            while (PL.PLEV != null)
+            {
+                yield return Timing.WaitForSeconds(1f);
+            }
         }
 
         IEnumerator<float> SpawnAsDClass(GameObject plr)
@@ -366,7 +383,7 @@ namespace EXILEDBattleRoyale
             plr.GetComponent<Inventory>().Clear();
         }
 
-        public void CalcRooms()
+        public void CalcRooms(bool lcz = true)
         {
             rooms.Clear();
             roomsstart.Clear();
@@ -378,7 +395,9 @@ namespace EXILEDBattleRoyale
                     foreach (var item2 in item.currentZonesAndRooms)
                     {
                         if (PluginMain.dbgRooms)
-                            FileManager.AppendFileSafe(item2.currentRoom, "roomsdbg.txt");
+                            FileManager.AppendFileSafe(item2.currentRoom + " - " + item2.currentZone, "roomsdbg.txt");
+                        if (item2.currentZone.Equals("LightRooms") && !lcz)
+                            continue;
                         foreach (var id in PluginMain.TierRooms)
                         {
                             var str = id.Key;
@@ -520,6 +539,7 @@ namespace EXILEDBattleRoyale
 
         public void EnterTheMatchTheyMust(PlayerJoinEvent ev)
         {
+            return;
             if (userids == null || userids.Contains(ev.Player.characterClassManager.UserId))
             {
                 return;
@@ -530,6 +550,9 @@ namespace EXILEDBattleRoyale
 
         public void KILLTheLCZ(ref DecontaminationEvent ev)
         {
+            CalcRooms(false);
+            return;
+            // k wow does nothing
             ev.Allow = false;
         }
     }
