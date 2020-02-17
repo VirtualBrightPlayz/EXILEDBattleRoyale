@@ -141,7 +141,7 @@ namespace EXILEDBattleRoyale
 
             try
             {
-                itemsSpawned = (int)data2["battle_items_spawned"]; //Config.GetInt("battle_items_spawned", 100);
+                itemsSpawned = int.Parse((string)data2["battle_items_spawned"]); //Config.GetInt("battle_items_spawned", 100);
             }
             catch (KeyNotFoundException e)
             {
