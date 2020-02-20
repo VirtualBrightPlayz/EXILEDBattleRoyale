@@ -396,25 +396,26 @@ namespace EXILEDBattleRoyale
                     {
                         if (PluginMain.dbgRooms)
                             FileManager.AppendFileSafe(item2.currentRoom + " - " + item2.currentZone, "roomsdbg.txt");
-                        if (item2.currentZone.Equals("LightRooms") && !lcz)
-                            continue;
-                        foreach (var id in PluginMain.TierRooms)
+                        if (item2.currentZone != null && item2.currentZone.Contains("LightRooms") && lcz)
                         {
-                            var str = id.Key;
-                            if (item2.currentRoom != null && item2.currentRoom.ToLower().Contains(str.ToLower()))
+                            foreach (var id in PluginMain.TierRooms)
                             {
-                                rooms.Add(item.transform, id.Value);
-                                break;
+                                var str = id.Key;
+                                if (item2.currentRoom != null && item2.currentRoom.ToLower().Contains(str.ToLower()))
+                                {
+                                    rooms.Add(item.transform, id.Value);
+                                    break;
+                                }
                             }
-                        }
-                        foreach (var id in PluginMain.TierRoomsStart)
-                        {
-                            var str = id.Key;
-                            if (item2.currentRoom != null && item2.currentRoom.ToLower().Contains(str.ToLower()))
+                            foreach (var id in PluginMain.TierRoomsStart)
                             {
-                                Log.Debug(id.Value);
-                                roomsstart.Add(item.transform, id.Value);
-                                break;
+                                var str = id.Key;
+                                if (item2.currentRoom != null && item2.currentRoom.ToLower().Contains(str.ToLower()))
+                                {
+                                    Log.Debug(id.Value);
+                                    roomsstart.Add(item.transform, id.Value);
+                                    break;
+                                }
                             }
                         }
                     }
@@ -539,6 +540,7 @@ namespace EXILEDBattleRoyale
 
         public void EnterTheMatchTheyMust(PlayerJoinEvent ev)
         {
+            Timing.RunCoroutine(SpawnAsDed(ev.Player.gameObject));
             return;
             if (userids == null || userids.Contains(ev.Player.characterClassManager.UserId))
             {
@@ -546,6 +548,12 @@ namespace EXILEDBattleRoyale
             }
             Timing.RunCoroutine(SpawnAsDClass(ev.Player.gameObject));
             Timing.RunCoroutine(SpawnAtRNG(ev.Player.gameObject));
+        }
+
+        public IEnumerator<float> SpawnAsDed(GameObject gameObject)
+        {
+            yield return Timing.WaitForSeconds(2f);
+            gameObject.GetComponent<CharacterClassManager>().SetClassID(RoleType.Spectator);
         }
 
         public void KILLTheLCZ(ref DecontaminationEvent ev)

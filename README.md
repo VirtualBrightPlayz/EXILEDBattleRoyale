@@ -2,6 +2,16 @@
 
 ## Config
 
+## `Exiled/<port>-config.yml`
+
+### battle_enabled
+
+Type: bool
+
+Function: Enable or disable the gamemode.
+
+Default Value: false
+
 Use the `Plugins/BattleRoyale/config.yml` file
 
 ### battle_rooms_dbg
