@@ -44,6 +44,7 @@ namespace EXILEDBattleRoyale
                 Events.DoorInteractEvent -= PLEV.AllowTheBorderTHROUGH;
                 Events.PlayerJoinEvent -= PLEV.EnterTheMatchTheyMust;
                 Events.DecontaminationEvent -= PLEV.KILLTheLCZ;
+                Events.PlayerLeaveEvent -= PLEV.PersonLeave;
                 PLEV = null;
             }
         }
@@ -130,6 +131,7 @@ namespace EXILEDBattleRoyale
                 Events.DoorInteractEvent += PLEV.AllowTheBorderTHROUGH;
                 Events.PlayerJoinEvent += PLEV.EnterTheMatchTheyMust;
                 Events.DecontaminationEvent += PLEV.KILLTheLCZ;
+                Events.PlayerLeaveEvent += PLEV.PersonLeave;
             }
         }
 
@@ -562,6 +564,39 @@ namespace EXILEDBattleRoyale
             return;
             // k wow does nothing
             ev.Allow = false;
+        }
+
+        public void PersonLeave(PlayerLeaveEvent ev)
+        {
+            int idx = 0;
+            GameObject player = null;
+            foreach (var plr in PlayerManager.players)
+            {
+                if (plr != null && plr.GetComponent<CharacterClassManager>().CurClass == RoleType.ClassD && plr.GetComponent<ReferenceHub>() != ev.Player)
+                {
+                    player = plr;
+                    idx++;
+                }
+            }
+            if (idx <= 1)
+            {
+                if (player != null)
+                {
+                    RoundSummary.RoundLock = false;
+                    player.GetComponent<Broadcast>().RpcAddElement("<color=red>" + player.GetComponent<NicknameSync>().MyNick + " wins!</color>", 10, true);
+                    foreach (var plr in PlayerManager.players)
+                    {
+                        if (plr != null && plr.GetComponent<CharacterClassManager>().CurClass != RoleType.ClassD)
+                        {
+                            plr.GetComponent<CharacterClassManager>().SetClassID(RoleType.Spectator);
+                        }
+                    }
+                }
+            }
+            else if (ev.Player.characterClassManager.CurClass == RoleType.ClassD)
+            {
+                ev.Player.GetComponent<Broadcast>().RpcAddElement("<color=orange>" + ev.Player.nicknameSync.MyNick + " died!\n" + (idx + 0) + " people left!</color>", 3, true);
+            }
         }
     }
 }
