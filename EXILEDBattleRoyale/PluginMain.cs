@@ -358,6 +358,7 @@ namespace EXILEDBattleRoyale
             plr.GetComponent<PlayerStats>().health = PluginMain.combatHP;
             plr.GetComponent<Broadcast>().TargetAddElement(plr.GetComponent<Broadcast>().connectionToClient, "<color=orange>Fight to the death!\nKILL ALL CLASS-D</color>", 10, true);
             plr.GetComponent<Inventory>().Clear();
+            ServerConsole.FriendlyFire = true;
             /*foreach (var item in PluginMain.startingItems)
             {
                 plr.GetComponent<Inventory>().AddNewItem((ItemType)item);
@@ -370,6 +371,7 @@ namespace EXILEDBattleRoyale
             var room = roomsstart.ElementAt(UnityEngine.Random.Range(0, roomsstart.Count));
             plr.GetComponent<PlyMovementSync>().OverridePosition(room.Key.position, 0f);
             plr.GetComponent<Inventory>().Clear();
+            ServerConsole.FriendlyFire = true;
             foreach (int item in PluginMain.TierItemsStart[room.Value])
             {
                 plr.GetComponent<Inventory>().AddNewItem((ItemType)item);
@@ -383,6 +385,7 @@ namespace EXILEDBattleRoyale
             plr.GetComponent<PlayerStats>().health = PluginMain.zeBorderHP;
             plr.GetComponent<Broadcast>().TargetAddElement(plr.GetComponent<Broadcast>().connectionToClient, "<color=red>You are the border!\nKILL ALL CLASS-D</color>", 10, true);
             plr.GetComponent<Inventory>().Clear();
+            ServerConsole.FriendlyFire = true;
         }
 
         public void CalcRooms(bool lcz = true)
