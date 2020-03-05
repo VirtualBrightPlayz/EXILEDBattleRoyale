@@ -398,8 +398,10 @@ namespace EXILEDBattleRoyale
                     {
                         if (PluginMain.dbgRooms)
                             FileManager.AppendFileSafe(item2.currentRoom + " - " + item2.currentZone, "roomsdbg.txt");
-                        if (item2.currentZone != null && item2.currentZone.Contains("LightRooms") && lcz)
+                        if (item2.currentZone != null)
                         {
+                            if (item2.currentZone.Contains("LightRooms") && !lcz)
+                                continue;
                             foreach (var id in PluginMain.TierRooms)
                             {
                                 var str = id.Key;
