@@ -333,7 +333,6 @@ namespace EXILEDBattleRoyale
             rooms = new Dictionary<Transform, string>();
             roomsstart = new Dictionary<Transform, string>();
             // next update
-            //Timing.RunCoroutine(Update());
         }
 
         public void ThereIsNoEscape(ref CheckEscapeEvent ev)
@@ -341,11 +340,12 @@ namespace EXILEDBattleRoyale
             ev.Allow = false;
         }
 
-        IEnumerator<float> Update()
+        void SetffOff()
         {
-            while (PL.PLEV != null)
+            ServerConsole.FriendlyFire = true;
+            foreach (var item in GameObject.FindObjectsOfType<WeaponManager>())
             {
-                yield return Timing.WaitForSeconds(1f);
+                item.NetworkfriendlyFire = true;
             }
         }
 
@@ -358,7 +358,7 @@ namespace EXILEDBattleRoyale
             plr.GetComponent<PlayerStats>().health = PluginMain.combatHP;
             plr.GetComponent<Broadcast>().TargetAddElement(plr.GetComponent<Broadcast>().connectionToClient, "<color=orange>Fight to the death!\nKILL ALL CLASS-D</color>", 10, true);
             plr.GetComponent<Inventory>().Clear();
-            ServerConsole.FriendlyFire = true;
+            SetffOff();
             /*foreach (var item in PluginMain.startingItems)
             {
                 plr.GetComponent<Inventory>().AddNewItem((ItemType)item);
@@ -371,7 +371,7 @@ namespace EXILEDBattleRoyale
             var room = roomsstart.ElementAt(UnityEngine.Random.Range(0, roomsstart.Count));
             plr.GetComponent<PlyMovementSync>().OverridePosition(room.Key.position, 0f);
             plr.GetComponent<Inventory>().Clear();
-            ServerConsole.FriendlyFire = true;
+            SetffOff();
             foreach (int item in PluginMain.TierItemsStart[room.Value])
             {
                 plr.GetComponent<Inventory>().AddNewItem((ItemType)item);
@@ -385,7 +385,7 @@ namespace EXILEDBattleRoyale
             plr.GetComponent<PlayerStats>().health = PluginMain.zeBorderHP;
             plr.GetComponent<Broadcast>().TargetAddElement(plr.GetComponent<Broadcast>().connectionToClient, "<color=red>You are the border!\nKILL ALL CLASS-D</color>", 10, true);
             plr.GetComponent<Inventory>().Clear();
-            ServerConsole.FriendlyFire = true;
+            SetffOff();
         }
 
         public void CalcRooms(bool lcz = true)
