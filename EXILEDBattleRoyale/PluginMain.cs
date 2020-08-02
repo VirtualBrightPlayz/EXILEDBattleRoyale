@@ -4,25 +4,28 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using UnityEngine;
-using EXILED;
+using Exiled;
 using MEC;
-using YamlDotNet.Core;
-using YamlDotNet.Serialization;
-using YamlDotNet.Serialization.NamingConventions;
 using System.IO;
+using Exiled.API.Features;
+using Exiled.Events.EventArgs;
 
 namespace EXILEDBattleRoyale
 {
-    public class PluginMain : EXILED.Plugin
+    public class PluginMain : Plugin<Config>
     {
+        public override string Name => "BattleRoyale";
+        public override string Author => "VirtualBrightPlayz";
+        public override Version Version => new Version(1, 0, 0);
+
         public PluginEvents PLEV;
 
-        public override string getName => "EXILEDBattleRoyale";
+        public static PluginMain main;
         //public static List<int> items;
         public static int itemsSpawned = 100;
         //public static List<int> startingItems;
         //public static List<string> Rooms;
-        public static List<string> Tiers;
+        /*public static List<string> Tiers;
         public static Dictionary<string, string> TierRooms;
         public static Dictionary<string, List<int>> TierItems;
         public static Dictionary<string, string> TierRoomsStart;
@@ -31,399 +34,155 @@ namespace EXILEDBattleRoyale
         public static float zeBorderHP = 1000f;
         public static float combatHP = 100f;
         public static bool dbgRooms = false;
-        public static string pluginDir;
+        public static string pluginDir;*/
 
-        public override void OnDisable()
+        public override void OnDisabled()
         {
+            base.OnDisabled();
             if (PLEV != null)
             {
-                Events.CheckEscapeEvent -= PLEV.ThereIsNoEscape;
-                Events.RoundStartEvent -= PLEV.CommitMassRedacted;
-                Events.PlayerDeathEvent -= PLEV.MansNotAlive;
-                Events.TeamRespawnEvent -= PLEV.CloseTheBorder;
-                Events.DoorInteractEvent -= PLEV.AllowTheBorderTHROUGH;
-                Events.PlayerJoinEvent -= PLEV.EnterTheMatchTheyMust;
-                Events.DecontaminationEvent -= PLEV.KILLTheLCZ;
-                Events.PlayerLeaveEvent -= PLEV.PersonLeave;
+                Exiled.Events.Handlers.Player.Escaping -= PLEV.ThereIsNoEscape;
+                Exiled.Events.Handlers.Server.RoundStarted -= PLEV.CommitMassRedacted;
+                Exiled.Events.Handlers.Player.Died += PLEV.MansNotAlive;
+                Exiled.Events.Handlers.Server.RespawningTeam -= PLEV.CloseTheBorder;
+                Exiled.Events.Handlers.Player.InteractingDoor -= PLEV.AllowTheBorderTHROUGH;
+                Exiled.Events.Handlers.Player.Joined -= PLEV.EnterTheMatchTheyMust;
+                Exiled.Events.Handlers.Map.Decontaminating -= PLEV.KILLTheLCZ;
+                Exiled.Events.Handlers.Player.Left -= PLEV.PersonLeave;
                 PLEV = null;
             }
+            main = null;
         }
 
-        public void SetupTiers(IDictionary<object, object> data2)
+        public override void OnEnabled()
         {
-            foreach (var tier in Tiers)
-            {
-                Log.Debug(tier);
-                List<int> list = new List<int>();
-                try
-                {
-                    var item = (List<object>)data2["battle_tier_" + tier]; //Config.GetIntList("battle_tier_" + tier);
-                    foreach (var item2 in item)
-                    {
-                        list.Add(int.Parse((string)item2));
-                    }
-                }
-                catch (KeyNotFoundException e)
-                {
-                    Log.Warn("battle_tier_" + tier + " not found in config");
-                }
-                if (list == null || list.IsEmpty())
-                {
-                    list = new List<int>();
-                    list.Add((int)ItemType.GunCOM15);
-                    list.Add((int)ItemType.GrenadeFrag);
-                    list.Add((int)ItemType.GunMP7);
-                    list.Add((int)ItemType.Adrenaline);
-                    list.Add((int)ItemType.KeycardChaosInsurgency);
-                    list.Add((int)ItemType.GunProject90);
-                    list.Add((int)ItemType.Ammo556);
-                    list.Add((int)ItemType.Ammo762);
-                    list.Add((int)ItemType.Ammo9mm);
-                }
-                TierItems.Add(tier, list);
-            }
-        }
-
-        public void SetupTiersStart(IDictionary<object, object> data2)
-        {
-            foreach (var tier in Tiers)
-            {
-                List<int> list = new List<int>();
-                try
-                {
-                    var item = (List<object>)data2["battle_tier_start_" + tier]; //Config.GetIntList("battle_tier_start_" + tier);
-                    foreach (var item2 in item)
-                    {
-                        list.Add(int.Parse((string)item2));
-                    }
-                }
-                catch (KeyNotFoundException e)
-                {
-                    Log.Warn("battle_tier_start_" + tier + " not found in config");
-                }
-                if (list == null || list.IsEmpty())
-                {
-                    list = new List<int>();
-                    list.Add((int)ItemType.KeycardScientist);
-                    list.Add((int)ItemType.GrenadeFrag);
-                }
-                TierItemsStart.Add(tier, list);
-            }
-        }
-
-        public override void OnEnable()
-        {
-            string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-            pluginDir = Path.Combine(appData, "Plugins", "BattleRoyale");
-            if (!Directory.Exists(pluginDir))
-                Directory.CreateDirectory(pluginDir);
-            if (!File.Exists(Path.Combine(pluginDir, "config.yml")))
-                File.WriteAllText(Path.Combine(pluginDir, "config.yml"), "");
-            ReloadConfig();
-            if (Config.GetBool("battle_enabled", false))
-            {
-                Log.Info("Battle Royale enabled.");
-                PLEV = new PluginEvents(this);
-                Events.CheckEscapeEvent += PLEV.ThereIsNoEscape;
-                Events.RoundStartEvent += PLEV.CommitMassRedacted;
-                Events.PlayerDeathEvent += PLEV.MansNotAlive;
-                Events.TeamRespawnEvent += PLEV.CloseTheBorder;
-                Events.DoorInteractEvent += PLEV.AllowTheBorderTHROUGH;
-                Events.PlayerJoinEvent += PLEV.EnterTheMatchTheyMust;
-                Events.DecontaminationEvent += PLEV.KILLTheLCZ;
-                Events.PlayerLeaveEvent += PLEV.PersonLeave;
-            }
-        }
-
-        public void ReloadConfig()
-        {
-            string data = File.ReadAllText(Path.Combine(pluginDir, "config.yml"));
-            var des = new DeserializerBuilder().Build();
-            var data2 = (IDictionary<object, object>)des.Deserialize<object>(data);
-
-            try
-            {
-                itemsSpawned = int.Parse((string)data2["battle_items_spawned"]); //Config.GetInt("battle_items_spawned", 100);
-            }
-            catch (KeyNotFoundException e)
-            {
-                Log.Warn("battle_items_spawned not found in config");
-            }
-            /*items = Config.GetIntList("battle_items");
-            startingItems = Config.GetIntList("battle_items_start");
-            Rooms = Config.GetStringList("battle_rooms");*/
-            try
-            {
-                //Log.Debug(data2["battle_tiers"].GetType().ToString());
-                var item = (IList<object>)data2["battle_tiers"]; //Config.GetStringList("battle_tiers");
-                //Log.Debug(item.Count.ToString());
-                Tiers = new List<string>();
-                foreach (var item2 in item)
-                {
-                    Tiers.Add((string)item2);
-                }
-            }
-            catch (KeyNotFoundException e)
-            {
-                Log.Warn("battle_tiers not found in config");
-            }
-            //starting tier
-            try
-            {
-                var item = (IDictionary<object, object>)data2["battle_tier_start_rooms"];
-                TierRoomsStart = new Dictionary<string, string>();
-                foreach (var item2 in item)
-                {
-                    TierRoomsStart.Add((string)item2.Key, (string)item2.Value);
-                }
-            }
-            catch (KeyNotFoundException e)
-            {
-                Log.Warn("battle_tier_start_rooms not found in config");
-            }
-            //spawn tier
-            try
-            {
-                var item = (IDictionary<object, object>)data2["battle_tier_rooms"]; //Config.GetStringDictionary("battle_tier_rooms");
-                TierRooms = new Dictionary<string, string>();
-                foreach (var item2 in item)
-                {
-                    TierRooms.Add((string)item2.Key, (string)item2.Value);
-                }
-            }
-            catch (KeyNotFoundException e)
-            {
-                Log.Warn("battle_tier_rooms not found in config");
-            }
-            try
-            {
-                dbgRooms = bool.Parse((string)data2["battle_rooms_dbg"]); //Config.GetBool("battle_rooms_dbg", false);
-            }
-            catch (KeyNotFoundException e)
-            {
-                Log.Warn("battle_rooms_dbg not found in config");
-            }
-            try
-            {
-                zeBorderRole = (RoleType)int.Parse((string)data2["battle_scp"]); //(RoleType)Config.GetInt("battle_scp", (int)RoleType.Scp173);
-            }
-            catch (KeyNotFoundException e)
-            {
-                Log.Warn("battle_scp not found in config");
-            }
-            try
-            {
-                zeBorderHP = float.Parse((string)data2["battle_scp_hp"]); //Config.GetFloat("battle_scp_hp", 1000f);
-            }
-            catch (KeyNotFoundException e)
-            {
-                Log.Warn("battle_scp_hp not found in config");
-            }
-            try
-            {
-                combatHP = float.Parse((string)data2["battle_classd_hp"]); //Config.GetFloat("battle_classd_hp", 100f);
-            }
-            catch (KeyNotFoundException e)
-            {
-                Log.Warn("battle_classd_hp not found in config");
-            }
-            /*if (items == null || items.IsEmpty())
-            {
-                items = new List<int>();
-                items.Add((int)ItemType.GunCOM15);
-                items.Add((int)ItemType.GrenadeFrag);
-                items.Add((int)ItemType.GunMP7);
-                items.Add((int)ItemType.Adrenaline);
-                items.Add((int)ItemType.KeycardChaosInsurgency);
-                items.Add((int)ItemType.GunProject90);
-                items.Add((int)ItemType.Ammo556);
-                items.Add((int)ItemType.Ammo762);
-                items.Add((int)ItemType.Ammo9mm);
-            }
-            if (startingItems == null || startingItems.IsEmpty())
-            {
-                startingItems.Add((int)ItemType.KeycardScientistMajor);
-                startingItems.Add((int)ItemType.GrenadeFrag);
-            }
-            if (Rooms == null || Rooms.IsEmpty())
-            {
-                Rooms = new List<string>();
-                Rooms.Add("LCZ_Curve");
-                Rooms.Add("LCZ_Crossing");
-                Rooms.Add("LCZ_TCross");
-                Rooms.Add("LCZ_Airlock");
-                Rooms.Add("LCZ_Straight");
-                //Rooms.Add("EZ_Cafeteria");
-            }*/
-            TierItems = new Dictionary<string, List<int>>();
-            TierItemsStart = new Dictionary<string, List<int>>();
-            if (TierRooms == null || TierRooms.IsEmpty())
-            {
-                Log.Warn("Error finding config battle_tier_rooms. Assuming configs set for tier items for LCZ. battle_tiers override.");
-                TierRooms = new Dictionary<string, string>();
-                TierRooms.Add("LCZ_Curve", "LCZ");
-                TierRooms.Add("LCZ_Crossing", "LCZ");
-                TierRooms.Add("LCZ_TCross", "LCZ");
-                TierRooms.Add("LCZ_Airlock", "LCZ");
-                TierRooms.Add("LCZ_Straight", "LCZ");
-
-                Tiers = new List<string>();
-                Tiers.Add("LCZ");
-
-
-                /*var list = Config.GetIntList("battle_tier_LCZ");
-                if (list == null || list.IsEmpty())
-                {
-                    list = new List<int>();
-                    list.Add((int)ItemType.KeycardScientist);
-                    list.Add((int)ItemType.GrenadeFrag);
-                }
-                foreach (var item in list)
-                {
-                    TierItems.Add("LCZ", item.ToString());
-                }*/
-            }
-            SetupTiers(data2);
-            if (TierRoomsStart == null || TierRoomsStart.IsEmpty())
-            {
-                Log.Warn("Error finding config battle_tier_start_rooms. Assuming configs set for tier items for LCZ. battle_tiers override.");
-                TierRoomsStart = new Dictionary<string, string>();
-                TierRoomsStart.Add("LCZ_Curve", "LCZ");
-                TierRoomsStart.Add("LCZ_Crossing", "LCZ");
-                TierRoomsStart.Add("LCZ_TCross", "LCZ");
-                TierRoomsStart.Add("LCZ_Airlock", "LCZ");
-                TierRoomsStart.Add("LCZ_Straight", "LCZ");
-
-                Tiers = new List<string>();
-                Tiers.Add("LCZ");
-
-
-                /*var list = Config.GetIntList("battle_tier_LCZ");
-                if (list == null || list.IsEmpty())
-                {
-                    list = new List<int>();
-                    list.Add((int)ItemType.KeycardScientist);
-                    list.Add((int)ItemType.GrenadeFrag);
-                }
-                foreach (var item in list)
-                {
-                    TierItems.Add("LCZ", item.ToString());
-                }*/
-            }
-            SetupTiersStart(data2);
-        }
-
-        public override void OnReload()
-        {
-            ReloadConfig();
+            base.OnEnabled();
+            Log.Info("Battle Royale enabled.");
+            PLEV = new PluginEvents(this);
+            Exiled.Events.Handlers.Player.Escaping += PLEV.ThereIsNoEscape;
+            Exiled.Events.Handlers.Server.RoundStarted += PLEV.CommitMassRedacted;
+            Exiled.Events.Handlers.Player.Died += PLEV.MansNotAlive;
+            Exiled.Events.Handlers.Server.RespawningTeam += PLEV.CloseTheBorder;
+            Exiled.Events.Handlers.Player.InteractingDoor += PLEV.AllowTheBorderTHROUGH;
+            Exiled.Events.Handlers.Player.Joined += PLEV.EnterTheMatchTheyMust;
+            Exiled.Events.Handlers.Map.Decontaminating += PLEV.KILLTheLCZ;
+            Exiled.Events.Handlers.Player.Left += PLEV.PersonLeave;
+            /*Events.CheckEscapeEvent += PLEV.ThereIsNoEscape;
+            Events.RoundStartEvent += PLEV.CommitMassRedacted;
+            Events.PlayerDeathEvent += PLEV.MansNotAlive;
+            Events.TeamRespawnEvent += PLEV.CloseTheBorder;
+            Events.DoorInteractEvent += PLEV.AllowTheBorderTHROUGH;
+            Events.PlayerJoinEvent += PLEV.EnterTheMatchTheyMust;
+            Events.DecontaminationEvent += PLEV.KILLTheLCZ;
+            Events.PlayerLeaveEvent += PLEV.PersonLeave;*/
+            main = this;
         }
     }
 
     public class PluginEvents
     {
         public const float MinDist = 300;
-        public Dictionary<Transform, string> rooms;
-        public Dictionary<Transform, string> roomsstart;
         public List<string> userids;
+        public List<Transform> roomsstart;
+        public Dictionary<Transform, string> rooms;
         private PluginMain PL;
 
         public PluginEvents(PluginMain pl)
         {
             this.PL = pl;
+            roomsstart = new List<Transform>();
             rooms = new Dictionary<Transform, string>();
-            roomsstart = new Dictionary<Transform, string>();
-            // next update
         }
 
-        public void ThereIsNoEscape(ref CheckEscapeEvent ev)
+        public void ThereIsNoEscape(EscapingEventArgs ev)
         {
-            ev.Allow = false;
+            ev.IsAllowed = false;
         }
 
-        void SetffOff()
+        void SetffOn()
         {
-            ServerConsole.FriendlyFire = true;
-            foreach (var item in GameObject.FindObjectsOfType<WeaponManager>())
+            Timing.CallDelayed(2f, () =>
             {
-                item.NetworkfriendlyFire = true;
+                ServerConsole.FriendlyFire = true;
+                FriendlyFireConfig.LifeEnabled = false;
+                FriendlyFireConfig.RespawnEnabled = false;
+                FriendlyFireConfig.RoundEnabled = false;
+                FriendlyFireConfig.WindowEnabled = false;
+                ServerConfigSynchronizer.RefreshAllConfigs();
+            });
+        }
+
+        IEnumerator<float> SpawnAsDClass(Player plr)
+        {
+            if (userids != null)
+                userids.Add(plr.UserId);
+            yield return Timing.WaitForSeconds(0.5f);
+            plr.SetRole(RoleType.ClassD, true, false);
+            plr.Health = PluginMain.main.Config.BattleClassDHP;
+            plr.MaxHealth = (int)PluginMain.main.Config.BattleClassDHP;
+            plr.Broadcast(10, "<color=orange>Fight to the death!\nKILL ALL CLASS-D</color>");
+            plr.ClearInventory();
+            SetffOn();
+            foreach (ItemType item in PluginMain.main.Config.StartItems)
+            {
+                plr.AddItem(item);
             }
         }
 
-        IEnumerator<float> SpawnAsDClass(GameObject plr)
-        {
-            if (userids != null)
-                userids.Add(plr.GetComponent<CharacterClassManager>().UserId);
-            yield return Timing.WaitForSeconds(0.5f);
-            plr.GetComponent<CharacterClassManager>().SetClassID(RoleType.ClassD);
-            plr.GetComponent<PlayerStats>().health = PluginMain.combatHP;
-            plr.GetComponent<Broadcast>().TargetAddElement(plr.GetComponent<Broadcast>().connectionToClient, "<color=orange>Fight to the death!\nKILL ALL CLASS-D</color>", 10, true);
-            plr.GetComponent<Inventory>().Clear();
-            SetffOff();
-            /*foreach (var item in PluginMain.startingItems)
-            {
-                plr.GetComponent<Inventory>().AddNewItem((ItemType)item);
-            }*/
-        }
-
-        IEnumerator<float> SpawnAtRNG(GameObject plr)
+        IEnumerator<float> SpawnAtRNG(Player plr)
         {
             yield return Timing.WaitForSeconds(2f);
             var room = roomsstart.ElementAt(UnityEngine.Random.Range(0, roomsstart.Count));
-            plr.GetComponent<PlyMovementSync>().OverridePosition(room.Key.position, 0f);
-            plr.GetComponent<Inventory>().Clear();
-            SetffOff();
-            foreach (int item in PluginMain.TierItemsStart[room.Value])
+            plr.Position = room.position + Vector3.up * 1.5f;
+            //plr.ClearInventory();
+            SetffOn();
+            /*foreach (ItemType item in PluginMain.main.Config.StartItems)
             {
-                plr.GetComponent<Inventory>().AddNewItem((ItemType)item);
-            }
+                plr.AddItem(item);
+            }*/
         }
 
-        IEnumerator<float> SpawnAsZeBORDER(GameObject plr)
+        IEnumerator<float> SpawnAsZeBORDER(Player plr)
         {
             yield return Timing.WaitForSeconds(0.5f);
-            plr.GetComponent<CharacterClassManager>().SetClassID(PluginMain.zeBorderRole);
-            plr.GetComponent<PlayerStats>().health = PluginMain.zeBorderHP;
-            plr.GetComponent<Broadcast>().TargetAddElement(plr.GetComponent<Broadcast>().connectionToClient, "<color=red>You are the border!\nKILL ALL CLASS-D</color>", 10, true);
-            plr.GetComponent<Inventory>().Clear();
-            SetffOff();
+            plr.SetRole(PluginMain.main.Config.BorderRole);
+            plr.Health = PluginMain.main.Config.BorderHP;
+            plr.MaxHealth = (int)PluginMain.main.Config.BorderHP;
+            plr.Broadcast(10, "<color=red>You are the border!\nKILL ALL CLASS-D</color>");
+            plr.ClearInventory();
+            SetffOn();
         }
 
         public void CalcRooms(bool lcz = true)
         {
-            rooms.Clear();
             roomsstart.Clear();
-
-            foreach (var item in Interface079.singleton.allInteractables)
+            rooms.Clear();
+            foreach (var room in Map.Rooms)
             {
-                if (item != null && item.transform != null && item.type == Scp079Interactable.InteractableType.Camera && item.currentZonesAndRooms != null)
+                if (room.Zone == PluginMain.main.Config.SpawnZone)
                 {
-                    foreach (var item2 in item.currentZonesAndRooms)
+                    foreach (var item in PluginMain.main.Config.BattleTiers)
                     {
-                        if (PluginMain.dbgRooms)
-                            FileManager.AppendFileSafe(item2.currentRoom + " - " + item2.currentZone, "roomsdbg.txt");
-                        if (item2.currentZone != null)
+                        foreach (var name in item.Value)
                         {
-                            if (item2.currentZone.Contains("LightRooms") && !lcz)
-                                continue;
-                            foreach (var id in PluginMain.TierRooms)
+                            if (room.Name.Contains(name))
                             {
-                                var str = id.Key;
-                                if (item2.currentRoom != null && item2.currentRoom.ToLower().Contains(str.ToLower()))
-                                {
-                                    rooms.Add(item.transform, id.Value);
-                                    break;
-                                }
+                                roomsstart.Add(room.Transform);
                             }
-                            foreach (var id in PluginMain.TierRoomsStart)
-                            {
-                                var str = id.Key;
-                                if (item2.currentRoom != null && item2.currentRoom.ToLower().Contains(str.ToLower()))
-                                {
-                                    Log.Debug(id.Value);
-                                    roomsstart.Add(item.transform, id.Value);
-                                    break;
-                                }
-                            }
+                        }
+                    }
+                }
+                if (room.Zone == Exiled.API.Enums.ZoneType.LightContainment && !lcz)
+                {
+                    continue;
+                }
+                foreach (var item in PluginMain.main.Config.BattleTiers)
+                {
+                    foreach (var name in item.Value)
+                    {
+                        if (room.Name.Contains(name))
+                        {
+                            rooms.Add(room.Transform, item.Key);
                         }
                     }
                 }
@@ -432,42 +191,25 @@ namespace EXILEDBattleRoyale
 
         public void CommitMassRedacted()
         {
-            try
+            if (roomsstart == null)
             {
-                /*Log.Debug("Main.Rooms - " + (PluginMain.Rooms == null).ToString());
-                Log.Debug("Main.items - " + (PluginMain.items == null).ToString());*/
-                Log.Debug("this.rooms - " + (rooms == null).ToString());
-                Log.Debug("079IFace " + (Interface079.singleton.allInteractables == null).ToString());
-                Log.Debug("Players " + (PlayerManager.players == null).ToString());
-                Log.Debug("Inv " + (Pickup.Inv == null).ToString());
+                roomsstart = new List<Transform>();
             }
-            catch (NullReferenceException e)
-            {
-                Log.Error("Oh noes: " + e.ToString());
-            }
-
-            Log.Debug("null chk");
             if (rooms == null)
             {
                 rooms = new Dictionary<Transform, string>();
-            }
-            if (roomsstart == null)
-            {
-                roomsstart = new Dictionary<Transform, string>();
             }
             if (userids == null)
             {
                 userids = new List<string>();
             }
 
-            Log.Debug("Clear");
-            Log.Debug("RLock");
             RoundSummary.RoundLock = true;
 
             CalcRooms();
 
             int idx = 0;
-            foreach (var plr in PlayerManager.players)
+            foreach (var plr in Player.List)
             {
                 /*if (idx == 0)
                     Timing.RunCoroutine(SpawnAsZeBORDER(plr));
@@ -475,7 +217,7 @@ namespace EXILEDBattleRoyale
                 if (plr != null)
                 {
                     Timing.RunCoroutine(SpawnAsDClass(plr));
-                    Timing.RunCoroutine(SpawnAtRNG(plr.gameObject));
+                    Timing.RunCoroutine(SpawnAtRNG(plr));
                     idx++;
                 }
             }
@@ -485,9 +227,9 @@ namespace EXILEDBattleRoyale
                 {
                     var room = rooms.ElementAt(UnityEngine.Random.Range(0, rooms.Count));
                     var roompos = room.Key.position;
-                    var itemtier = PluginMain.TierItems[room.Value];
+                    var itemtier = PluginMain.main.Config.BattleTierItems[room.Value];
                     var newitem = itemtier[UnityEngine.Random.Range(0, itemtier.Count)];
-                    Pickup.Inv.SetPickup((ItemType)newitem, 50, roompos, Quaternion.identity, 0, 0, 0);
+                    Pickup.Inv.SetPickup((ItemType)newitem, 50, roompos + Vector3.up * 1.5f, Quaternion.identity, 0, 0, 0);
                 }
                 catch (Exception e)
                 {
@@ -495,13 +237,13 @@ namespace EXILEDBattleRoyale
             }
         }
 
-        public void MansNotAlive(ref PlayerDeathEvent ev)
+        public void MansNotAlive(DiedEventArgs ev)
         {
             int idx = 0;
-            GameObject player = null;
-            foreach (var plr in PlayerManager.players)
+            Player player = null;
+            foreach (var plr in Player.List)
             {
-                if (plr != null && plr.GetComponent<CharacterClassManager>().CurClass == RoleType.ClassD && plr.GetComponent<ReferenceHub>() != ev.Player)
+                if (plr != null && plr.Role == RoleType.ClassD && plr.ReferenceHub != ev.Target.ReferenceHub)
                 {
                     player = plr;
                     idx++;
@@ -512,7 +254,7 @@ namespace EXILEDBattleRoyale
                 if (player != null)
                 {
                     RoundSummary.RoundLock = false;
-                    player.GetComponent<Broadcast>().RpcAddElement("<color=red>" + player.GetComponent<NicknameSync>().MyNick + " wins!</color>", 10, true);
+                    Map.Broadcast(10, "<color=red>" + player.Nickname + " wins!</color>", Broadcast.BroadcastFlags.Monospaced);
                     foreach (var plr in PlayerManager.players)
                     {
                         if (plr != null && plr.GetComponent<CharacterClassManager>().CurClass != RoleType.ClassD)
@@ -522,62 +264,53 @@ namespace EXILEDBattleRoyale
                     }
                 }
             }
-            else if (ev.Player.characterClassManager.CurClass == RoleType.ClassD)
+            else if (ev.Target.Role == RoleType.ClassD)
             {
-                ev.Player.GetComponent<Broadcast>().RpcAddElement("<color=orange>" + ev.Player.nicknameSync.MyNick + " died!\n" + (idx + 0) + " people left!</color>", 3, true);
+                Map.Broadcast(3, "<color=orange>" + ev.Target.Nickname + " died!\n" + (idx + 0) + " people left!</color>", Broadcast.BroadcastFlags.Monospaced);
             }
         }
 
-        public void CloseTheBorder(ref TeamRespawnEvent ev)
+        public void CloseTheBorder(RespawningTeamEventArgs ev)
         {
-            foreach (var plr in ev.ToRespawn)
+            foreach (var plr in ev.Players)
             {
-                Timing.RunCoroutine(SpawnAsZeBORDER(plr.gameObject));
-                Timing.RunCoroutine(SpawnAtRNG(plr.gameObject));
+                Timing.RunCoroutine(SpawnAsZeBORDER(plr));
+                Timing.RunCoroutine(SpawnAtRNG(plr));
             }
         }
 
-        public void AllowTheBorderTHROUGH(ref DoorInteractionEvent ev)
+        public void AllowTheBorderTHROUGH(InteractingDoorEventArgs ev)
         {
-            if (ev.Player.characterClassManager.CurClass == PluginMain.zeBorderRole)
+            if (ev.Player.Role == PluginMain.main.Config.BorderRole)
             {
-                ev.Allow = true;
+                ev.IsAllowed = true;
             }
         }
 
-        public void EnterTheMatchTheyMust(PlayerJoinEvent ev)
+        public void EnterTheMatchTheyMust(JoinedEventArgs ev)
         {
-            Timing.RunCoroutine(SpawnAsDed(ev.Player.gameObject));
-            return;
-            if (userids == null || userids.Contains(ev.Player.characterClassManager.UserId))
-            {
-                return;
-            }
-            Timing.RunCoroutine(SpawnAsDClass(ev.Player.gameObject));
-            Timing.RunCoroutine(SpawnAtRNG(ev.Player.gameObject));
+            Timing.RunCoroutine(SpawnAsDed(ev.Player));
         }
 
-        public IEnumerator<float> SpawnAsDed(GameObject gameObject)
+        public IEnumerator<float> SpawnAsDed(Player gameObject)
         {
             yield return Timing.WaitForSeconds(2f);
-            gameObject.GetComponent<CharacterClassManager>().SetClassID(RoleType.Spectator);
+            gameObject.SetRole(RoleType.Spectator);
         }
 
-        public void KILLTheLCZ(ref DecontaminationEvent ev)
+        public void KILLTheLCZ(DecontaminatingEventArgs ev)
         {
             CalcRooms(false);
             return;
-            // k wow does nothing
-            ev.Allow = false;
         }
 
-        public void PersonLeave(PlayerLeaveEvent ev)
+        public void PersonLeave(LeftEventArgs ev)
         {
             int idx = 0;
-            GameObject player = null;
-            foreach (var plr in PlayerManager.players)
+            Player player = null;
+            foreach (var plr in Player.List)
             {
-                if (plr != null && plr.GetComponent<CharacterClassManager>().CurClass == RoleType.ClassD && plr.GetComponent<ReferenceHub>() != ev.Player)
+                if (plr != null && plr.Role == RoleType.ClassD && plr.ReferenceHub != ev.Player.ReferenceHub)
                 {
                     player = plr;
                     idx++;
@@ -588,7 +321,7 @@ namespace EXILEDBattleRoyale
                 if (player != null)
                 {
                     RoundSummary.RoundLock = false;
-                    player.GetComponent<Broadcast>().RpcAddElement("<color=red>" + player.GetComponent<NicknameSync>().MyNick + " wins!</color>", 10, true);
+                    Map.Broadcast(10, "<color=red>" + player.Nickname + " wins!</color>", Broadcast.BroadcastFlags.Monospaced);
                     foreach (var plr in PlayerManager.players)
                     {
                         if (plr != null && plr.GetComponent<CharacterClassManager>().CurClass != RoleType.ClassD)
@@ -598,9 +331,9 @@ namespace EXILEDBattleRoyale
                     }
                 }
             }
-            else if (ev.Player.characterClassManager.CurClass == RoleType.ClassD)
+            else if (ev.Player.Role == RoleType.ClassD)
             {
-                ev.Player.GetComponent<Broadcast>().RpcAddElement("<color=orange>" + ev.Player.nicknameSync.MyNick + " died!\n" + (idx + 0) + " people left!</color>", 3, true);
+                Map.Broadcast(3, "<color=orange>" + ev.Player.Nickname + " died!\n" + (idx + 0) + " people left!</color>", Broadcast.BroadcastFlags.Monospaced);
             }
         }
     }
